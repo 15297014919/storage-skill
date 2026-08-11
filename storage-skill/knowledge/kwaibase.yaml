@@ -1,0 +1,30 @@
+name: "kwaibase"
+internal_name: "KwaiBase"
+category: "宽表（在线/近线）"
+platform: "基础平台部"
+data_model: "兼容 HBase 协议；基于 C++ 自研；存算分离；封装原子写、条件操作等事务接口"
+consistency: "原子行操作；低延时；存算分离自动打散，无热点 RowKey 风险"
+scalability: "13 集群，357 实例，3PB；面向在线/近线场景，优于 HBase 在线性能"
+cost_profile: "存算分离架构，内部报价通过平台查询"
+sla: "面向 P0 在线场景，12 集群暂无使用风险；HBase 在线场景全量迁移目标"
+query_patterns:
+  - "在线大数据量高性能 KV 读写"
+  - "大数据量宽表低延时"
+  - "主站 IM 私信/分享口令"
+  - "电商事件行为"
+anti_patterns:
+  - "依赖任意组合复杂二级索引（HBase 协议原生不支持，需 ES 协同）"
+  - "不迁移老 HBase 在线场景（HBase 仅维护状态，在线场景应迁 KwaiBase）"
+  - "用于需要多行强事务的场景（仅单行原子）"
+key_thresholds: "在线场景优先 KwaiBase；HBase 仅用于离线/大数据场景"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

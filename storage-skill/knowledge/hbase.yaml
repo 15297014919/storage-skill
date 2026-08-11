@@ -1,0 +1,27 @@
+name: "hbase"
+internal_name: "HBase"
+category: "宽表（离线/大数据）"
+platform: "基础平台部"
+data_model: "分布式列式宽表；快手基于 1.2.0-cdh5.13.1 深度定制"
+consistency: "单行原子能力；无跨行强事务；延迟高于 KSQL/KwaiBase"
+scalability: "20 集群（其中在线 9 个待迁 KwaiBase，离线 5 个）；SSD 39PB + HDD 114PB"
+cost_profile: "大容量低成本；HDD 大数据场景成本优势明显"
+sla: "维护状态；在线场景建议迁移 KwaiBase；HBase 在24年底曾引发 P1 故障"
+query_patterns:
+  - "数据量 1GB~百TB 的离线大数据场景"
+  - "宽表批量读写"
+  - "特征中心离线场景"
+anti_patterns:
+  - "P0 在线场景继续用 HBase（已知多次在线故障，应迁 KwaiBase）"
+  - "依赖复杂二级索引（需 ES 协同）"
+  - "单调 RowKey 造成热点写（需做散列处理）"
+key_thresholds: "离线场景可用；在线/近线场景优先迁 KwaiBase"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"

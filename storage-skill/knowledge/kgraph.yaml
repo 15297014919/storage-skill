@@ -1,0 +1,29 @@
+name: "kgraph"
+internal_name: "KGraph"
+category: "图数据库"
+platform: "基础平台部"
+data_model: "分布式图数据库；万亿量级社交和兴趣关系；27 集群，1671 实例，3.3PB"
+consistency: "主从延迟 10~20ms"
+scalability: "高性能低成本缓存架构；KGraph 1 在社科侧做升级"
+cost_profile: "见平台文档"
+sla: "见平台文档；KGraph 1.0 在升级至 2.0"
+query_patterns:
+  - "用户-用户关系"
+  - "用户-行为关系"
+  - "社交/推荐关联关系"
+  - "团伙挖掘"
+anti_patterns:
+  - "用于通用 KV 存储或非关系图场景"
+  - "继续用 KGraph 1.0 不升级（平台在推 2.0 迁移）"
+key_thresholds: "KGraph 1.0 需升级；仅适合关联关系场景"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

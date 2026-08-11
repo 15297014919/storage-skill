@@ -1,0 +1,33 @@
+name: "ksql"
+internal_name: "KSQL"
+category: "关系型数据库"
+platform: "KDB平台"
+data_model: "关系表、主键、索引、InnoDB 事务"
+consistency: "强一致、ACID、主从半同步；主从延迟目标 <1s"
+scalability: "实例 11w+，6032 集群；数据量 <5T 优先 KSQL，>5T 或 >200 列推 KTable；副本建议 ≤4"
+cost_profile: "存储、计算、副本与运维成本；内部报价通过 KDB 平台查询"
+sla: "见 KDB 平台 SLA 文档，具体等级视部署配置而定"
+query_patterns:
+  - "事务型主记录"
+  - "主键/索引点查"
+  - "有限范围查询与关联"
+  - "强一致读写"
+anti_patterns:
+  - "数据量 >5T 或列数 >200 时不迁移 KTable（性能劣化）"
+  - "超高频日志流直写（建议 Kafka 接入后落 OLAP）"
+  - "副本数超过 4 个（造成运维成本和主从延迟风险）"
+  - "大库 >1TB 或大表 >50GB 不治理（已知 270+ 大库、600+ 大表在治理中）"
+  - "使用全模糊 LIKE 或非索引列作查询条件"
+  - "深翻页（深度超 1 万行需重构为游标翻页）"
+key_thresholds: "大库 >1TB，大表 >50GB，副本 >4，慢查 >1s，主从延迟 >1s，连接数 >2w"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

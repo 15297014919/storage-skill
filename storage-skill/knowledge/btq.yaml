@@ -1,0 +1,29 @@
+name: "btq"
+internal_name: "BTQ / RocketMQ"
+category: "消息队列"
+platform: "基础平台部"
+data_model: "主题、队列与消息；BTQ 18w+Topic，RocketMQ 快手内部版"
+consistency: "顺序、投递与事务能力需按版本和平台配置验证"
+scalability: "通过队列和节点扩展"
+cost_profile: "受吞吐、保留、副本与运维影响"
+sla: "见平台文档"
+query_patterns:
+  - "业务事件解耦"
+  - "异步任务"
+  - "有顺序/事务消息语义的场景"
+anti_patterns:
+  - "把消息队列当查询数据库"
+  - "未设计幂等、重试与死信处理"
+  - "选型时不区分 Kafka（高吞吐流）和 BTQ/RocketMQ（业务解耦）"
+key_thresholds: "堆积监控必须配置；根据业务语义选 Kafka vs BTQ"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

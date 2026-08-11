@@ -1,0 +1,30 @@
+name: "kcache"
+internal_name: "KCache"
+category: "KV 缓存"
+platform: "KCC平台"
+data_model: "兼容大部分 Redis 命令；多 IO+多 Worker 多线程架构；AEP 介质"
+consistency: "最终一致；多线程模型对热 key/大 key 更友好；单 Worker QPS ~5w+"
+scalability: "999 集群，3000+ 实例，容量 1.9PB；热 key QPS 40w/s；219 集群 QPS 已超上限需扩容"
+cost_profile: "约 2.04 元/GB/月（AEP 介质，比 Redis 约低 50%，以平台最新报价为准）"
+sla: "见 KCC 平台；支持 1AZ2副本/2AZ2副本/2AZ3副本/3AZ3副本；支持 AZ 逃生"
+query_patterns:
+  - "热 key/大 key 场景"
+  - "访问密度 <1000/GB 的缓存"
+  - "电商秒杀大促场景"
+  - "QPS 峰值大的场景"
+anti_patterns:
+  - "协议不完全兼容 Redis 社区版，迁移前必须检查命令兼容性文档"
+  - "容量使用率 >85% 未扩容（219 个集群 QPS 超上限在治理中）"
+  - "访问密度 >1000/GB 时不用 Redis 而用 KCache（Redis 性能更优）"
+key_thresholds: "利用率 >85% 需扩容；QPS 峰值应在集群承载范围内；访问密度参考 1000/GB 分界"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

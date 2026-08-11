@@ -1,0 +1,28 @@
+name: "kafka"
+internal_name: "Kafka"
+category: "消息队列"
+platform: "基础平台部"
+data_model: "分区追加日志；10w+ Topic"
+consistency: "分区内有序；投递语义和事务边界需按配置验证"
+scalability: "通过分区扩展；分区键设计防热点"
+cost_profile: "受吞吐、保留周期、副本与网络影响"
+sla: "见平台文档，堆积为高危指标"
+query_patterns:
+  - "高吞吐事件流管道"
+  - "日志传输"
+  - "解耦生产者与消费者"
+anti_patterns:
+  - "作为可任意查询的永久事实库"
+  - "忽略分区键造成热点"
+  - "消息积压不监控"
+  - "忽略幂等、重试与死信处理"
+key_thresholds: "堆积监控必须配置；分区键防热点；保留周期需规划"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"

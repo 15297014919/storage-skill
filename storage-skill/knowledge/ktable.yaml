@@ -1,0 +1,30 @@
+name: "ktable"
+internal_name: "KTable"
+category: "分布式关系型数据库"
+platform: "KDB平台"
+data_model: "兼容 MySQL 协议的分布式 KV，存算分离，全局二级索引，原生分布式事务"
+consistency: "强一致、高可用、存算分离"
+scalability: "99集群、424实例；>5T 或 >200 列场景，QPS 可横向扩展；KTable 1.0 需升级至 2.0"
+cost_profile: "存算分离架构，内部报价通过 KDB 平台查询"
+sla: "见 KDB 平台 SLA，KTable 1.0 集群在做平滑迁移升级 2.0"
+query_patterns:
+  - "大数据量场景（>5T）"
+  - "大宽表（>200列）"
+  - "高 QPS 弹性扩展"
+  - "MySQL 协议兼容查询"
+anti_patterns:
+  - "数据量 <5T 且无大宽表需求时强行用 KTable（KSQL 更高效）"
+  - "继续用 KTable 1.0 不升级（1.0 与 2.0 不兼容，平台在推迁移）"
+  - "KTable1.0 集群未配置告警（已知集群均无告警接入天问）"
+key_thresholds: "磁盘使用率高危 >70%，CPU 高危 >90%；集群告警必须接入天问"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

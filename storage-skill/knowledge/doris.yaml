@@ -1,0 +1,29 @@
+name: "doris"
+internal_name: "Doris / Bleem"
+category: "OLAP 列式分析"
+platform: "基础平台部"
+data_model: "列式分析存储；支持多表 Join、bitmap 圈选；2025年已具备替换 CK 的能力"
+consistency: "面向分析；分区分桶设计关键"
+scalability: "分布式扩展，按业务需求部署；公司当前处于推广阶段"
+cost_profile: "计算、存储、副本及运维成本需通过平台查询"
+sla: "见平台文档；圈选（bitmap）场景和多表 Join 场景当前官方推荐"
+query_patterns:
+  - "交互式分析"
+  - "报表聚合"
+  - "多维查询"
+  - "多表 Join"
+  - "bitmap 圈选人群"
+anti_patterns:
+  - "承担强事务在线主库"
+  - "未经模型设计直接迁移所有明细点查"
+  - "需要全文检索时（应用 ES）"
+key_thresholds: "分区分桶设计是性能核心；新 OLAP 场景优先评估 Doris 替代 CK"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"

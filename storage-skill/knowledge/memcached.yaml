@@ -1,0 +1,28 @@
+name: "memcached"
+internal_name: "Memcached"
+category: "KV 缓存（待迁移方向）"
+platform: "KCC平台"
+data_model: "String 型键值内存缓存；不支持持久化和数据结构"
+consistency: "无持久化，仅 String 结构；总 QPS 能力最高，吞吐量最大"
+scalability: "3409 集群，1.5w+ 实例，总容量 674TB；命中率低的集群待治理"
+cost_profile: "成本参考 KCC 平台，超大 QPS 场景使用"
+sla: "公司长期方向：Memcached 待迁移至 Redis（待 Redis 成本下降后推进）"
+query_patterns:
+  - "超高 QPS 纯缓存场景"
+  - "数据结构简单为 String 的场景"
+anti_patterns:
+  - "需要持久化、多数据结构或迁移能力时不用 Redis（Memcached 无法满足）"
+  - "命中率 <80% 不治理（存在资源浪费）"
+  - "新增使用 Memcached（公司方向是统一迁移至 Redis/KCache）"
+key_thresholds: "命中率 >80%；内存使用率合理；公司长期方向迁移至 Redis"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"

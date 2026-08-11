@@ -1,0 +1,28 @@
+name: "clickhouse"
+internal_name: "ClickHouse / CK"
+category: "OLAP 列式分析"
+platform: "基础平台部"
+data_model: "列式分析存储；排序键和分区是性能关键；152 集群"
+consistency: "面向批量分析；不满足在线跨行事务要求；Doris（Bleem）已可替换部分 CK 场景"
+scalability: "分区、分片与副本扩展；写入批次大小和排序键设计关键"
+cost_profile: "压缩比高，存储成本较低；计算成本取决于查询复杂度"
+sla: "见平台文档；新场景建议评估 Doris（Bleem）是否能替代"
+query_patterns:
+  - "大规模聚合分析"
+  - "日志与事件分析"
+  - "高吞吐批量导入与离线分析"
+anti_patterns:
+  - "承担在线事务主库"
+  - "大量小批写入（写放大严重）"
+  - "无界高基数查询（OOM 风险）"
+  - "多表 Join 场景优先评估 Doris"
+key_thresholds: "建议评估 Doris（Bleem）是否能替代；写入需批量"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"

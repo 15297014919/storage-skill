@@ -1,0 +1,30 @@
+name: "redis"
+internal_name: "Redis"
+category: "KV 缓存"
+platform: "KCC平台"
+data_model: "键值及 String/Hash/List/Set/ZSet 等内存数据结构"
+consistency: "单命令原子性；最终一致（异步复制）；单核 QPS 约 10w+，单热 key QPS 20w/s"
+scalability: "17512 集群，147w+ 实例，总容量 1.5PB；可横向扩展"
+cost_profile: "约 4.28 元/GB/月（不含 Proxy，以平台最新报价为准）"
+sla: "见 KCC 平台；支持 1AZ2副本/2AZ4副本/4AZ4副本"
+query_patterns:
+  - "高性能热点缓存"
+  - "低延迟 KV 亚毫秒级"
+  - "计数与短生命周期状态"
+  - "实时标签读写"
+anti_patterns:
+  - "把缓存当唯一权威数据源（无持久化保障）"
+  - "存放超大 Key（>10KB）或大冷数据（成本极高）"
+  - "单 Key QPS 超热点阈值未做打散"
+  - "Redis 逐出数 >0（预留容量不足）"
+  - "热 Key 超过 10w QPS 未处理"
+key_thresholds: "大 key >10KB，热 key >10w/s，逐出 >0，内存使用率 >100% 需扩容"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA 与容灾文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "存储架构选型"
+  short_description: "面向业务约束完成存储中间件选型、反模式检查与验证建议"
+  default_prompt: "Use $storage-skill to analyze my storage requirements and produce a structured architecture selection report."

@@ -1,0 +1,30 @@
+name: "elasticsearch"
+internal_name: "ES"
+category: "搜索/日志/轻量 OLAP"
+platform: "基础平台部"
+data_model: "倒排索引与文档；近实时索引可见性；500 集群，6000+ 实例，10PB"
+consistency: "近实时（近 1s 可见性）；不满足强一致订单/资金主记录要求"
+scalability: "分片扩展；高危集群 39 个在治理；磁盘使用率 <10% 的 244 个集群待优化"
+cost_profile: "索引、副本、内存与计算成本较高；磁盘低使用率集群存在浪费"
+sla: "集群告警已打通天问；查询峰值 >10s/堆内存 >85%/young GC>6s/min 为高危"
+query_patterns:
+  - "全文检索与相关性排序"
+  - "中后台数据检索"
+  - "日志场景监控/debug"
+  - "低维度向量混合检索"
+anti_patterns:
+  - "作为强一致订单/资金主记录（近实时不满足强一致）"
+  - "大分片 >50GB 不治理（高危）"
+  - "分片数 >200 或字段膨胀"
+  - "深翻页（>1万行）应换 search_after"
+  - "未配置天问告警"
+key_thresholds: "单分片 <50GB，分片数 <200，堆内存 <85%，查询峰值 <10s，young GC <6s/min"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"

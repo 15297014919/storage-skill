@@ -1,0 +1,33 @@
+name: "kiwi"
+internal_name: "Kiwi / KwaiKV"
+category: "持久化 KV（未来迁移 KwaiKV）"
+platform: "KCC平台"
+data_model: "兼容大部分 Redis 命令；SSD 存储；支持 Raft 强一致（Kiwi 4）"
+consistency: "最终一致（Kiwi 2/3）或强一致（Kiwi 4）；单核 QPS ~1w+，写延迟毫秒级"
+scalability: "329 集群，1076 副本；总容量 202w GB；37 个集群单分片 >50GB 在治理；单分片不支持分裂"
+cost_profile: "约 0.32 元/GB/月（SSD，比 Redis 低约 92%，以平台最新报价为准）"
+sla: "支持 1AZ2副本/2AZ4副本/4AZ4副本；支持 AZ 逃生"
+query_patterns:
+  - "大容量低访问密度（<300/GB）持久化存储"
+  - "离线标签存储"
+  - "搜广推数据分析"
+  - "PB 级冷数据"
+anti_patterns:
+  - "用于写入速度要求高的场景（写延迟毫秒级，差于 Redis）"
+  - "单分片超过 50GB 不治理（扩容效率低，不支持分裂）"
+  - "单副本容量使用率 >80% 不扩容（超此水位不承诺扩容耗时）"
+  - "集群容量 >100TB 不分拆（扩容效率低且稳定性风险增加）"
+  - "单盘写入带宽 >600MB/s 不降流（不承诺扩容耗时）"
+  - "用于 P0 核心集群但未评估 Kiwi SLA 是否匹配"
+key_thresholds: "单分片 <50GB，容量使用率 <80%，集群 <100TB，写带宽 <600MB/s"
+typical_company_usage:
+  - "详见内部文档：https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+validation_focus:
+  - "使用脱敏或合成数据在 staging 验证容量、延迟与失败恢复"
+  - "查证当前版本、配额、SLA、容灾与成本文档"
+internal_verification_required: false
+source_docs:
+  - title: "25快手存储健康度治理&业务存储架构演进"
+    url: "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+  - title: "2025快手四大存储选型标准"
+    url: "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"
