@@ -30,7 +30,7 @@ storage-skill/
 │       ├── cleartle-mysql-single-table-bottleneck.json   # 🚫 清结算单表不治理预埋风险
 │       └── redis-cross-service-hotkey-incident.json      # 🚫 Redis 热Key跨服务扩散事故
 ├── eval/
-│   └── run_eval.sh                 # 静态评测入口
+│   └── run_eval.sh                 # 静态契约校验 + 确定性规则回归入口
 ├── knowledge/                      # 存储产品能力档案（14 个 YAML）
 │   ├── btq.yaml                    # BTQ / RocketMQ
 │   ├── clickhouse.yaml             # ClickHouse
@@ -54,7 +54,9 @@ storage-skill/
 │   ├── evidence-and-safety.md      # 证据优先级 & 安全边界
 │   └── report-schema.md           # 选型报告输出契约（YAML Schema）
 └── scripts/
-    └── validate_skill_data.py      # 数据完整性校验脚本
+    ├── validate_skill_data.py      # 知识库、案例与契约完整性校验
+    ├── run_selection.py            # 确定性选型规则引擎，生成 JSON / Markdown 报告
+    └── evaluate_cases.py           # 执行案例、比较金标、生成回归报告
 ```
 
 ---
@@ -154,25 +156,24 @@ storage-skill/
 | `cleartle-mysql-single-table-bottleneck` | 陷阱 | 清结算存储架构升级-分库分表评审 | ✅ 真实架构评审，含实际业务量数据 |
 | `ck-high-frequency-update-too-many-parts` | 陷阱 | ClickHouse oncall 手册 | ⚠️ 运维故障手册真实，"广告出价"为基于真实故障模式的合成场景 |
 
-每个 case 的 `expected` 字段包含推荐方案/次优方案/明确淘汰方案/风险与反模式/验证建议/引用来源/待验证项，与 `report-schema.md` 对齐。
+每个 case 同时保留两层内容：
 
-### 静态评测
+- `request` / `expected`：真实业务背景、人工审核的完整选型结论与来源，供 Skill few-shot 和答辩展示；
+- `input` / `golden`：人工提炼的结构化输入与机器可判定断言，供确定性规则回归使用。
+
+`golden` 会检查主推荐、禁止方案、淘汰原因码、风险码、验证主题和最少证据数量，避免仅凭自由文本判断结果。
+
+### 回归评测
 
 ```bash
-# 完整性校验：检查知识库字段、评测集数量、Prompt/Reference 文件存在性
+# 静态契约校验 + 9 个真实案例的确定性规则回归
 bash eval/run_eval.sh
 
-# 或单独运行
+# 单独执行静态契约校验
 python3 scripts/validate_skill_data.py .
 ```
 
-校验内容：
-- 14 个 YAML 档案 11 个必填字段齐全
-- 评测集 ≥ 8 个 case，每个 case 的 expected 包含 7 个报告字段
-- `prompts/main.md`、`prompts/anti-pattern-check.md` 存在
-- `references/` 下 3 个规范文件存在
-- `SKILL.md` 包含 KSQL / KCache / KwaiBase / 硬约束 / 工作流 等关键词
-- 无"待内部证据确认"占位符残留
+评测会保留每个案例的 `request/expected`，并使用 `input/golden` 生成结构化报告、比较机器断言，在 `artifacts/eval/<timestamp>/` 输出报告、逐项比较结果和汇总通过率。
 
 ---
 

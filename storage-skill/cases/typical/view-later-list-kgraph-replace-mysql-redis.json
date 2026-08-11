@@ -21,9 +21,18 @@
       "若迁移成本高，先降 MySQL 副本数（从 1主3从降至 1主2从）+ 下掉 Redis 缓存层（直接访问 DB），短期降本"
     ],
     "明确淘汰方案": [
-      { "组件": "继续 Redis+MySQL 双层架构", "原因": "需维护 CacheSetter、Kbus、回源逻辑等重复性基础设施，MySQL 扩容须人工拆库；KGraph/KwaiKV 均可替代且架构更简洁" },
-      { "组件": "ES 存储用户列表", "原因": "ZSET 列表无全文检索需求，ES 对简单有序列表是架构过度设计" },
-      { "组件": "KwaiBase 存储", "原因": "KwaiBase 适合 IM 消息等宽表场景，关系列表场景 KGraph 更匹配" }
+      {
+        "组件": "继续 Redis+MySQL 双层架构",
+        "原因": "需维护 CacheSetter、Kbus、回源逻辑等重复性基础设施，MySQL 扩容须人工拆库；KGraph/KwaiKV 均可替代且架构更简洁"
+      },
+      {
+        "组件": "ES 存储用户列表",
+        "原因": "ZSET 列表无全文检索需求，ES 对简单有序列表是架构过度设计"
+      },
+      {
+        "组件": "KwaiBase 存储",
+        "原因": "KwaiBase 适合 IM 消息等宽表场景，关系列表场景 KGraph 更匹配"
+      }
     ],
     "已识别风险与反模式": [
       "KGraph 迁移成本：图语义接口（Cypher）有学习成本，须封装 SortedSetIndex 接口屏蔽 Cypher 复杂度（主站已有封装方案）",
@@ -36,7 +45,12 @@
       {
         "目标": "验证 KGraph 在稍后再看 ZSET 场景的读写性能和一致性",
         "环境": "staging",
-        "指标": ["ZSET 写入 P99 < 10ms", "有序列表分页查询 P99 < 5ms", "峰值 308w QPS 下无 proxy 热点", "与 Redis 数据 DIFF 率 = 0"],
+        "指标": [
+          "ZSET 写入 P99 < 10ms",
+          "有序列表分页查询 P99 < 5ms",
+          "峰值 308w QPS 下无 proxy 热点",
+          "与 Redis 数据 DIFF 率 = 0"
+        ],
         "步骤": [
           "使用 SortedSetIndex KGraph 接口实现稍后再看 DAO，staging 双写 Redis 和 KGraph",
           "回放线上流量（含头部 KOL 场景）做压测和 DIFF 校验"
@@ -46,12 +60,63 @@
       }
     ],
     "引用来源": [
-      { "标题": "业务场景和存储的综合分析V2（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcADITcEPhSmzG2ER-5CaRDJM" },
-      { "标题": "主站持久化存储演进方案调研（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG" }
+      {
+        "标题": "业务场景和存储的综合分析V2（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcADITcEPhSmzG2ER-5CaRDJM"
+      },
+      {
+        "标题": "主站持久化存储演进方案调研（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG"
+      }
     ],
     "待验证项": [
       "确认 KwaiKV 正式发布时间表及大 ZSET 支持情况（若 KwaiKV 支持，可优先 KwaiKV 替代，学习成本更低）",
       "确认 SortedSetIndex KGraph 实现是否已覆盖稍后再看所需的所有接口（ZADD、ZRANGE、ZREVRANGE、ZCARD、ZREM）"
+    ]
+  },
+  "input": {
+    "scenario": "稍后再看有序关系列表",
+    "data_model": "graph",
+    "data_scale_tb": 0.25,
+    "read_qps": 3080000,
+    "write_qps": 20000,
+    "p99_latency_ms": 5,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "ordered_relation",
+      "key_lookup"
+    ],
+    "cost_sensitive": "high",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "graph_hotspot",
+      "migration_consistency"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KGraph"
+    ],
+    "forbidden_primary_components": [
+      "ES"
+    ],
+    "required_rejection_codes": [
+      "MYSQL_REDIS_DUAL_LAYER_OVERHEAD"
+    ],
+    "required_risk_codes": [
+      "GRAPH_HOTSPOT",
+      "MIGRATION_CONSISTENCY"
+    ],
+    "required_validation_topics": [
+      "staging_latency",
+      "data_consistency"
     ]
   }
 }

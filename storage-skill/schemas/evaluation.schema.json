@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "存储选型评测结果",
+  "type": "object",
+  "required": ["case_id", "passed", "checks", "failures"],
+  "properties": {
+    "case_id": {"type": "string"},
+    "passed": {"type": "boolean"},
+    "checks": {"type": "array", "items": {"type": "object", "required": ["name", "passed", "expected", "actual"], "properties": {"name": {"type": "string"}, "passed": {"type": "boolean"}, "expected": {}, "actual": {}}, "additionalProperties": false}},
+    "failures": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

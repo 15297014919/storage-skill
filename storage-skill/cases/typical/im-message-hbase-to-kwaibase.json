@@ -21,9 +21,18 @@
       "若无法整体迁移，可先把温热层 MySQL 替换为 KwaiBase，HBase 降级为纯归档"
     ],
     "明确淘汰方案": [
-      { "组件": "HBase（在线场景）", "原因": "硬约束：禁止新增 HBase 在线集群；P995 秒级抖动是已知问题，已有 P1 故障记录；版本落后社区且升级阻力大" },
-      { "组件": "继续三层架构", "原因": "三层冗余导致存储成本 900w/年；一致性清洗发现 1000w+ 条不一致记录；维护复杂度高" },
-      { "组件": "其他开源组件（如 Cassandra）", "原因": "业务迁移成本高，公司无对应支持" }
+      {
+        "组件": "HBase（在线场景）",
+        "原因": "硬约束：禁止新增 HBase 在线集群；P995 秒级抖动是已知问题，已有 P1 故障记录；版本落后社区且升级阻力大"
+      },
+      {
+        "组件": "继续三层架构",
+        "原因": "三层冗余导致存储成本 900w/年；一致性清洗发现 1000w+ 条不一致记录；维护复杂度高"
+      },
+      {
+        "组件": "其他开源组件（如 Cassandra）",
+        "原因": "业务迁移成本高，公司无对应支持"
+      }
     ],
     "已识别风险与反模式": [
       "在线场景使用 HBase 反模式：P995 耗时秒级毛刺，已有 P1 可用性故障，需立即评估迁移",
@@ -35,7 +44,12 @@
       {
         "目标": "验证 KwaiBase 替代 HBase 在消息读写场景的性能和一致性",
         "环境": "staging",
-        "指标": ["P995 读耗时 < 10ms（vs HBase 秒级毛刺）", "双读 DIFF 率 < 千万分之一", "可用性 > 99.99%", "存储成本估算下降 > 50%"],
+        "指标": [
+          "P995 读耗时 < 10ms（vs HBase 秒级毛刺）",
+          "双读 DIFF 率 < 千万分之一",
+          "可用性 > 99.99%",
+          "存储成本估算下降 > 50%"
+        ],
         "步骤": [
           "采样线上流量分布在 staging KwaiBase 做压测（含极端热点场景）",
           "灰度：会话白名单 → 小比例流量 → 全量，每阶段双读校验"
@@ -45,12 +59,64 @@
       }
     ],
     "引用来源": [
-      { "标题": "IM消息存储成本优化工作汇报（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcABVR8_D-x2Ff-zsOS2G6TiM" },
-      { "标题": "25快手存储健康度治理&业务存储架构演进", "链接": "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb" }
+      {
+        "标题": "IM消息存储成本优化工作汇报（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcABVR8_D-x2Ff-zsOS2G6TiM"
+      },
+      {
+        "标题": "25快手存储健康度治理&业务存储架构演进",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+      }
     ],
     "待验证项": [
       "确认 KwaiBase 当前 TimeLine 模型完备度（IM 会话有 timeline 排序需求）",
       "确认 KwaiBase 冷热分离功能 WIP 进度，判断是否需要业务层自行实现冷热分层"
+    ]
+  },
+  "input": {
+    "scenario": "IM 消息在线宽表迁移",
+    "data_model": "wide_table",
+    "data_scale_tb": 500,
+    "read_qps": 100000,
+    "write_qps": 50000,
+    "p99_latency_ms": 10,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "key_lookup",
+      "prefix_lookup",
+      "append_scan"
+    ],
+    "cost_sensitive": "high",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "row_key_hotspot",
+      "multi_layer_consistency"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KwaiBase"
+    ],
+    "forbidden_primary_components": [
+      "HBase"
+    ],
+    "required_rejection_codes": [
+      "ONLINE_HBASE_PROHIBITED"
+    ],
+    "required_risk_codes": [
+      "ROW_KEY_HOTSPOT",
+      "MULTI_LAYER_CONSISTENCY"
+    ],
+    "required_validation_topics": [
+      "staging_latency",
+      "row_key_distribution"
     ]
   }
 }

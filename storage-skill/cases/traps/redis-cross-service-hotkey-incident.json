@@ -20,8 +20,14 @@
       "若无法迁移 KCache，在 Redis 侧配置热 Key 探测（天问告警）+ LocalCache 兜底，热 Key 超阈值时本地缓存打散"
     ],
     "明确淘汰方案": [
-      { "组件": "直播间维度 Redis 直写（不打散）", "原因": "热门直播间单 Key QPS 可达 20w+，超出 Redis 10w/s 红线，导致 RT 飙升和跨服务影响" },
-      { "组件": "跨业务共享同一 Redis 集群", "原因": "已有实际故障：A 服务热 Key 影响 B 服务正常读写，这是已记录的 P1 根因模式" }
+      {
+        "组件": "直播间维度 Redis 直写（不打散）",
+        "原因": "热门直播间单 Key QPS 可达 20w+，超出 Redis 10w/s 红线，导致 RT 飙升和跨服务影响"
+      },
+      {
+        "组件": "跨业务共享同一 Redis 集群",
+        "原因": "已有实际故障：A 服务热 Key 影响 B 服务正常读写，这是已记录的 P1 根因模式"
+      }
     ],
     "已识别风险与反模式": [
       "热 Key 跨服务影响反模式：同一集群被多个服务共用，任一服务产生热 Key 均可影响其他服务（本案例根因）",
@@ -33,7 +39,11 @@
       {
         "目标": "验证 KCache 或打散方案在头部主播直播场景下的稳定性",
         "环境": "staging",
-        "指标": ["单 Key QPS < 10w（打散后）或 KCache 无热点告警", "RT P99 < 5ms", "无跨服务延迟波动"],
+        "指标": [
+          "单 Key QPS < 10w（打散后）或 KCache 无热点告警",
+          "RT P99 < 5ms",
+          "无跨服务延迟波动"
+        ],
         "步骤": [
           "模拟头部主播开播，构造 20w QPS 指向单一直播间 ID 的计数写入",
           "验证打散后 N 个副本 Key 负载均匀，聚合读逻辑正确"
@@ -43,12 +53,64 @@
       }
     ],
     "引用来源": [
-      { "标题": "redis大/热key告警case收集（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcADpxiwgfmwRhQ5Hi0TqbX8u" },
-      { "标题": "KV存储选型实践", "链接": "https://docs.corp.kuaishou.com/d/home/fcABZNsQQ9p0-zVZR14rmdtOT" }
+      {
+        "标题": "redis大/热key告警case收集（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcADpxiwgfmwRhQ5Hi0TqbX8u"
+      },
+      {
+        "标题": "KV存储选型实践",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcABZNsQQ9p0-zVZR14rmdtOT"
+      }
     ],
     "待验证项": [
       "确认 KCache 当前是否支持反垃圾业务所需的命令集（命令兼容性校验）",
       "确认天问是否已针对该集群配置热 Key 探测告警"
+    ]
+  },
+  "input": {
+    "scenario": "直播间反垃圾热点计数",
+    "data_model": "kv",
+    "data_scale_tb": 0.1,
+    "read_qps": 50000,
+    "write_qps": 200000,
+    "access_density_per_gb": 2000,
+    "p99_latency_ms": 5,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": false,
+    "workload_mode": "online",
+    "query_patterns": [
+      "counter",
+      "cross_service_hotkey"
+    ],
+    "cost_sensitive": "medium",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "hot_key",
+      "cross_service_hotkey"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KCache"
+    ],
+    "forbidden_primary_components": [
+      "Redis"
+    ],
+    "required_rejection_codes": [
+      "REDIS_HOT_KEY_LIMIT"
+    ],
+    "required_risk_codes": [
+      "HOT_KEY",
+      "CROSS_SERVICE_HOTKEY"
+    ],
+    "required_validation_topics": [
+      "hot_key",
+      "cluster_isolation"
     ]
   }
 }

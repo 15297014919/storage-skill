@@ -22,8 +22,14 @@
       "KSQL XEngine 替代 InnoDB：空间降低 75%，性能降低 10-20%，适合冷数据场景"
     ],
     "明确淘汰方案": [
-      { "组件": "继续全量 MySQL + Redis 双层架构", "原因": "Top 50 个库占存储 80%，均有明确的更优替代方案，不迁移意味着持续高成本和高维护负担" },
-      { "组件": "TiDB 替代", "原因": "调研显示 TiDB 在主站纯 KV 场景无明显优势，且迁移成本高、公司支持力度不及 KwaiBase/KTable" }
+      {
+        "组件": "继续全量 MySQL + Redis 双层架构",
+        "原因": "Top 50 个库占存储 80%，均有明确的更优替代方案，不迁移意味着持续高成本和高维护负担"
+      },
+      {
+        "组件": "TiDB 替代",
+        "原因": "调研显示 TiDB 在主站纯 KV 场景无明显优势，且迁移成本高、公司支持力度不及 KwaiBase/KTable"
+      }
     ],
     "已识别风险与反模式": [
       "KwaiBase 无二级索引限制：迁移前必须梳理业务是否依赖非主键查询，有则需重新设计 RowKey 或配合 ES",
@@ -35,7 +41,12 @@
       {
         "目标": "验证 KwaiBase 在评论/点赞场景的读写性能和成本收益",
         "环境": "staging",
-        "指标": ["读 P99 < 10ms（现状 avg < 10ms）", "写 P99 < 20ms", "存储成本估算下降 > 50%", "缓存命中率 > 90%（确认是否能替代业务侧缓存）"],
+        "指标": [
+          "读 P99 < 10ms（现状 avg < 10ms）",
+          "写 P99 < 20ms",
+          "存储成本估算下降 > 50%",
+          "缓存命中率 > 90%（确认是否能替代业务侧缓存）"
+        ],
         "步骤": [
           "采样 commentByPhoto 集群（2.4PB）的脱敏数据导入 staging KwaiBase",
           "按线上流量分布（热门视频占比高）回放读写压测"
@@ -45,12 +56,63 @@
       }
     ],
     "引用来源": [
-      { "标题": "主站持久化存储演进方案调研（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG" },
-      { "标题": "25快手存储健康度治理&业务存储架构演进", "链接": "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb" }
+      {
+        "标题": "主站持久化存储演进方案调研（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG"
+      },
+      {
+        "标题": "25快手存储健康度治理&业务存储架构演进",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb"
+      }
     ],
     "待验证项": [
       "确认 KwaiBase 当前 QPS 上限（主站评论 commentByPhoto 峰值 TPS 15w，需确认集群配额）",
       "确认 KwaiBase 是否支持 JSON/text 类型字段（主站大量使用 ext_params text 字段做扩展）"
+    ]
+  },
+  "input": {
+    "scenario": "主站 KV 与列表数据降本迁移",
+    "data_model": "wide_table",
+    "data_scale_tb": 2400,
+    "read_qps": 1000000,
+    "write_qps": 150000,
+    "p99_latency_ms": 10,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "key_lookup",
+      "prefix_lookup"
+    ],
+    "cost_sensitive": "high",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "row_key_hotspot",
+      "cache_replacement"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KwaiBase"
+    ],
+    "forbidden_primary_components": [
+      "KSQL"
+    ],
+    "required_rejection_codes": [
+      "MYSQL_KV_COST_OVERHEAD"
+    ],
+    "required_risk_codes": [
+      "ROW_KEY_HOTSPOT",
+      "CACHE_REPLACEMENT"
+    ],
+    "required_validation_topics": [
+      "staging_latency",
+      "capacity_cost"
     ]
   }
 }

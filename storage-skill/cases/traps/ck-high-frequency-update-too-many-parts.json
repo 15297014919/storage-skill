@@ -19,8 +19,14 @@
       "若必须在 CK 中做状态管理，使用 AggregatingMergeTree + 物化视图，将更新语义转为聚合语义（业务逻辑须可接受最终一致性）"
     ],
     "明确淘汰方案": [
-      { "组件": "ReplacingMergeTree + 高频 UPDATE", "原因": "每次出价 5w/s 的 Mutation 会产生大量 Parts，触发 too-many-parts（CK Oncall 手册记录的经典故障根因），写入被阻塞，严重时表进入 readonly" },
-      { "组件": "ClickHouse 作为实时出价状态主存", "原因": "CK 查询延迟 P99 约 100-500ms，不满足出价决策的毫秒级响应要求；Redis/KCache 更适合实时状态存取（亚毫秒级）" }
+      {
+        "组件": "ReplacingMergeTree + 高频 UPDATE",
+        "原因": "每次出价 5w/s 的 Mutation 会产生大量 Parts，触发 too-many-parts（CK Oncall 手册记录的经典故障根因），写入被阻塞，严重时表进入 readonly"
+      },
+      {
+        "组件": "ClickHouse 作为实时出价状态主存",
+        "原因": "CK 查询延迟 P99 约 100-500ms，不满足出价决策的毫秒级响应要求；Redis/KCache 更适合实时状态存取（亚毫秒级）"
+      }
     ],
     "已识别风险与反模式": [
       "too-many-parts 反模式：高频小批量写入（不合并 batch）是 CK 的经典 P1 故障根因，每 1-2s 写一次而非每 100ms 写一次，须在 ETL 层做批量合并",
@@ -33,7 +39,12 @@
       {
         "目标": "验证追加写 + 预聚合方案在 5w/s 出价记录场景下的稳定性",
         "环境": "staging",
-        "指标": ["写入 P99 < 10ms（单批次 1000 条以上）", "Parts 数量 < 300/分区", "无 too-many-parts 告警", "小时级聚合查询 P99 < 200ms"],
+        "指标": [
+          "写入 P99 < 10ms（单批次 1000 条以上）",
+          "Parts 数量 < 300/分区",
+          "无 too-many-parts 告警",
+          "小时级聚合查询 P99 < 200ms"
+        ],
         "步骤": [
           "模拟 5w/s 写入，ETL 层合并为每秒一次批量写入（每批 ~5w 条）",
           "持续写入 1h，监控 Parts 数量和查询 P99"
@@ -43,12 +54,60 @@
       }
     ],
     "引用来源": [
-      { "标题": "ClickHouse oncall 手册（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcAB9bcsFcw64u92N1K5D0uxP" },
-      { "标题": "ES、Doris、CK存储选型调研", "链接": "https://docs.corp.kuaishou.com/d/home/fcADCuLf--w6IWU1-jnlmPWIy" }
+      {
+        "标题": "ClickHouse oncall 手册（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcAB9bcsFcw64u92N1K5D0uxP"
+      },
+      {
+        "标题": "ES、Doris、CK存储选型调研",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcADCuLf--w6IWU1-jnlmPWIy"
+      }
     ],
     "待验证项": [
       "确认业务对聚合统计的时效性要求（实时/近实时/T+1），据此决定是否需要 Flink 实时预聚合写入 CK",
       "确认 AggregatingMergeTree + 物化视图方案的聚合语义是否覆盖业务所需的全部指标"
+    ]
+  },
+  "input": {
+    "scenario": "广告实时出价状态与分析",
+    "data_model": "olap",
+    "data_scale_tb": 20,
+    "read_qps": 1000,
+    "write_qps": 50000,
+    "p99_latency_ms": 200,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "high_frequency_update",
+      "aggregation"
+    ],
+    "cost_sensitive": "medium",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "too_many_parts"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KCache",
+      "CK"
+    ],
+    "forbidden_primary_components": [],
+    "required_rejection_codes": [
+      "CK_HIGH_FREQUENCY_UPDATE"
+    ],
+    "required_risk_codes": [
+      "TOO_MANY_PARTS"
+    ],
+    "required_validation_topics": [
+      "batch_write",
+      "hot_key"
     ]
   }
 }

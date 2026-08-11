@@ -19,8 +19,14 @@
       "若人力紧张，短期可先做垂直拆分（将清结算流水和对账明细拆为独立库），降低单库压力，争取改造时间窗口"
     ],
     "明确淘汰方案": [
-      { "组件": "继续等待（不做改造）", "原因": "每月新增 20TB，几个月内必然触达瓶颈；届时在高负载下做迁移风险极高，且对资金链路影响无法接受" },
-      { "组件": "副本扩容（加从库）", "原因": "6 副本已超出公司 4 副本健康标准，继续加副本会导致主从延迟飙升；且解决不了写入瓶颈" }
+      {
+        "组件": "继续等待（不做改造）",
+        "原因": "每月新增 20TB，几个月内必然触达瓶颈；届时在高负载下做迁移风险极高，且对资金链路影响无法接受"
+      },
+      {
+        "组件": "副本扩容（加从库）",
+        "原因": "6 副本已超出公司 4 副本健康标准，继续加副本会导致主从延迟飙升；且解决不了写入瓶颈"
+      }
     ],
     "已识别风险与反模式": [
       "副本过多反模式：1主6从已超出公司 >4 副本需治理的红线，主从延迟风险高，需先降至 ≤4 副本",
@@ -32,7 +38,11 @@
       {
         "目标": "验证分库分表方案的数据正确性和迁移稳定性",
         "环境": "staging",
-        "指标": ["分库分表路由正确率 100%", "双写阶段数据 DIFF 率 = 0%", "迁移期间清结算 RT P99 < 100ms"],
+        "指标": [
+          "分库分表路由正确率 100%",
+          "双写阶段数据 DIFF 率 = 0%",
+          "迁移期间清结算 RT P99 < 100ms"
+        ],
         "步骤": [
           "在 staging 创建目标分库分表结构，双写验证路由逻辑",
           "用历史脱敏数据回放验证分表查询覆盖率"
@@ -42,12 +52,61 @@
       }
     ],
     "引用来源": [
-      { "标题": "清结算存储架构升级-分库分表评审（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcABeOsVSxy2xCH4VRQstmGUj" },
-      { "标题": "存储健康度治理标准", "链接": "https://docs.corp.kuaishou.com/d/home/fcAATr1i1vxEN0C816BZAf5-U" }
+      {
+        "标题": "清结算存储架构升级-分库分表评审（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcABeOsVSxy2xCH4VRQstmGUj"
+      },
+      {
+        "标题": "存储健康度治理标准",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcAATr1i1vxEN0C816BZAf5-U"
+      }
     ],
     "待验证项": [
       "确认当前 KSQL 分库分表中间件支持的最大分片数",
       "确认清结算是否有跨库事务需求（如扣款 + 记流水），若有需评估分布式事务方案"
+    ]
+  },
+  "input": {
+    "scenario": "清结算单库单表容量增长",
+    "data_model": "relation",
+    "data_scale_tb": 0.2,
+    "read_qps": 3000,
+    "write_qps": 1000,
+    "p99_latency_ms": 100,
+    "consistency": "strong",
+    "transaction_required": true,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "primary_key_lookup",
+      "single_table_growth"
+    ],
+    "cost_sensitive": "medium",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "replica_overload",
+      "large_table_growth"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KSQL"
+    ],
+    "forbidden_primary_components": [],
+    "required_rejection_codes": [
+      "DEFERRED_SHARDING_RISK"
+    ],
+    "required_risk_codes": [
+      "REPLICA_OVERLOAD",
+      "LARGE_TABLE_GROWTH"
+    ],
+    "required_validation_topics": [
+      "sharding_routing",
+      "data_consistency"
     ]
   }
 }

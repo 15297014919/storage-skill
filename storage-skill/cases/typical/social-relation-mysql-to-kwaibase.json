@@ -21,8 +21,14 @@
       "KGraph 适用于图关联关系查询（二度关系、共同关注等），若有推荐场景可评估 KGraph 替代"
     ],
     "明确淘汰方案": [
-      { "组件": "继续 MySQL 分库分表", "原因": "分库分表维护成本高，扩容需人工介入；PB 级数据量 + 缓存层维护成本合计不优于 KwaiBase 单层架构" },
-      { "组件": "ES 作关系主存", "原因": "关注关系无全文检索需求，ES 的倒排索引对简单 KV 点查是浪费；ES 不支持强一致写" }
+      {
+        "组件": "继续 MySQL 分库分表",
+        "原因": "分库分表维护成本高，扩容需人工介入；PB 级数据量 + 缓存层维护成本合计不优于 KwaiBase 单层架构"
+      },
+      {
+        "组件": "ES 作关系主存",
+        "原因": "关注关系无全文检索需求，ES 的倒排索引对简单 KV 点查是浪费；ES 不支持强一致写"
+      }
     ],
     "已识别风险与反模式": [
       "迁移过程一致性风险：双写期间须确保 KwaiBase 写入失败不影响主链路（异步降级+重试）",
@@ -34,7 +40,12 @@
       {
         "目标": "验证 KwaiBase 在关注/粉丝点查场景的性能和成本收益",
         "环境": "staging",
-        "指标": ["点查 P99 < 10ms", "写入 P99 < 20ms", "大 V 账号热点均匀分布（无 Region 过载）", "存储成本估算下降 > 50% vs MySQL"],
+        "指标": [
+          "点查 P99 < 10ms",
+          "写入 P99 < 20ms",
+          "大 V 账号热点均匀分布（无 Region 过载）",
+          "存储成本估算下降 > 50% vs MySQL"
+        ],
         "步骤": [
           "用脱敏关注关系数据导入 staging KwaiBase，RowKey 设计为 hash(user_id) + user_id + following_user_id",
           "并发压测点查和关注/取关写入，特别构造大 V 场景（单用户关注者 1000w+）"
@@ -44,12 +55,63 @@
       }
     ],
     "引用来源": [
-      { "标题": "主站持久化存储演进方案调研（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG" },
-      { "标题": "2025快手四大存储选型标准", "链接": "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI" }
+      {
+        "标题": "主站持久化存储演进方案调研（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG"
+      },
+      {
+        "标题": "2025快手四大存储选型标准",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI"
+      }
     ],
     "待验证项": [
       "确认 KwaiBase 对'按时间倒序查询用户的关注列表'是否有原生支持（TimeLine 模型完备度）",
       "确认关注关系数据是否有跨 AZ 容灾要求，KwaiBase 当前支持的容灾级别"
+    ]
+  },
+  "input": {
+    "scenario": "关注粉丝关系宽表迁移",
+    "data_model": "wide_table",
+    "data_scale_tb": 1000,
+    "read_qps": 500000,
+    "write_qps": 20000,
+    "p99_latency_ms": 10,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "key_lookup",
+      "prefix_lookup"
+    ],
+    "cost_sensitive": "high",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "row_key_hotspot",
+      "secondary_index"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "KwaiBase"
+    ],
+    "forbidden_primary_components": [
+      "ES"
+    ],
+    "required_rejection_codes": [
+      "MYSQL_SHARDING_OVERHEAD"
+    ],
+    "required_risk_codes": [
+      "ROW_KEY_HOTSPOT",
+      "SECONDARY_INDEX"
+    ],
+    "required_validation_topics": [
+      "staging_latency",
+      "row_key_distribution"
     ]
   }
 }

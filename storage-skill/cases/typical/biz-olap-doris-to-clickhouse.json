@@ -20,9 +20,18 @@
       "保持 Doris 并做垂直扩容（但社区活跃度低、代码质量差，长期维护成本高，不推荐）"
     ],
     "明确淘汰方案": [
-      { "组件": "Doris", "原因": "实时导入 CPU 消耗是 CK 的 10 倍仍有 lag；查询 QPS 极限 400 低于 CK 600+；社区活跃度低、代码质量差（基于 Impala）；内部维护成本高" },
-      { "组件": "Druid（原架构）", "原因": "不支持 JOIN，导入查询性能差，已完成第一轮迁移，不考虑回退" },
-      { "组件": "ES 作为 OLAP 主引擎", "原因": "不支持预聚合，超大结果集（万条以上）查询性能差；适合作为维表数据源而非主引擎" }
+      {
+        "组件": "Doris",
+        "原因": "实时导入 CPU 消耗是 CK 的 10 倍仍有 lag；查询 QPS 极限 400 低于 CK 600+；社区活跃度低、代码质量差（基于 Impala）；内部维护成本高"
+      },
+      {
+        "组件": "Druid（原架构）",
+        "原因": "不支持 JOIN，导入查询性能差，已完成第一轮迁移，不考虑回退"
+      },
+      {
+        "组件": "ES 作为 OLAP 主引擎",
+        "原因": "不支持预聚合，超大结果集（万条以上）查询性能差；适合作为维表数据源而非主引擎"
+      }
     ],
     "已识别风险与反模式": [
       "CK 不适合高频 UPDATE/DELETE：MergeTree 是追加写设计，频繁 Mutation 会导致 too-many-parts，计划中的 Mutation 操作须改为追加+聚合语义",
@@ -35,7 +44,12 @@
       {
         "目标": "验证 CK 在商业化报表全量场景下的性能和稳定性",
         "环境": "staging（已有 Analysis Doris 集群作为对照）",
-        "指标": ["实时导入 lag = 0（CK ETL CPU < 100核）", "查询 P99 < 500ms（QPS = 400）", "CPU 利用率 < 30%（相同 QPS）", "模拟节点故障后 P99 1min 内恢复"],
+        "指标": [
+          "实时导入 lag = 0（CK ETL CPU < 100核）",
+          "查询 P99 < 500ms（QPS = 400）",
+          "CPU 利用率 < 30%（相同 QPS）",
+          "模拟节点故障后 P99 1min 内恢复"
+        ],
         "步骤": [
           "回放历史查询样例（商业化 Doris 查询样例）对比 P99",
           "并行实时导入压测，验证 lag 情况",
@@ -46,12 +60,65 @@
       }
     ],
     "引用来源": [
-      { "标题": "商业化效果数据迁移clickhouse项目（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcABdI0bD5ieCJf9uKs97G7mr" },
-      { "标题": "ES、Doris、CK存储选型调研", "链接": "https://docs.corp.kuaishou.com/d/home/fcADCuLf--w6IWU1-jnlmPWIy" }
+      {
+        "标题": "商业化效果数据迁移clickhouse项目（内部）",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcABdI0bD5ieCJf9uKs97G7mr"
+      },
+      {
+        "标题": "ES、Doris、CK存储选型调研",
+        "链接": "https://docs.corp.kuaishou.com/d/home/fcADCuLf--w6IWU1-jnlmPWIy"
+      }
     ],
     "待验证项": [
       "确认 CK Projection 预聚合对该业务维度组合的压缩率（需业务侧提供最常用的 GROUP BY 维度组合）",
       "确认 CK on ES 功能的 ES shard 数量限制（公司红线 < 50GB/shard）"
+    ]
+  },
+  "input": {
+    "scenario": "商业化高吞吐 OLAP 报表迁移",
+    "data_model": "olap",
+    "data_scale_tb": 100,
+    "read_qps": 430,
+    "write_qps": 1200000,
+    "p99_latency_ms": 500,
+    "consistency": "eventual",
+    "transaction_required": false,
+    "persistence_required": true,
+    "workload_mode": "online",
+    "query_patterns": [
+      "benchmark_ck_migration",
+      "aggregation",
+      "join",
+      "pre_aggregation"
+    ],
+    "cost_sensitive": "medium",
+    "availability": {
+      "cross_az": true
+    },
+    "known_risks": [
+      "too_many_parts",
+      "shard_skew"
+    ]
+  },
+  "golden": {
+    "allowed_alternatives": [],
+    "minimum_evidence_count": 1,
+    "required_primary_components": [
+      "CK"
+    ],
+    "forbidden_primary_components": [
+      "Doris"
+    ],
+    "required_rejection_codes": [
+      "DORIS_BENCHMARK_CAPACITY"
+    ],
+    "required_risk_codes": [
+      "TOO_MANY_PARTS",
+      "SHARD_SKEW"
+    ],
+    "required_validation_topics": [
+      "benchmark_latency",
+      "batch_write"
     ]
   }
 }

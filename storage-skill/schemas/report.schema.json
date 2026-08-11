@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "存储选型报告",
+  "type": "object",
+  "required": ["report_version", "recommendation", "alternatives", "rejections", "decision_trace", "risks", "validation_plan", "evidence", "pending_verifications"],
+  "properties": {
+    "report_version": {"type": "string"},
+    "recommendation": {
+      "type": "object",
+      "required": ["components", "confidence", "reasons"],
+      "properties": {
+        "components": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+        "reasons": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "alternatives": {"type": "array", "items": {"type": "object", "required": ["components", "applicable_when"], "properties": {"components": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "applicable_when": {"type": "array", "minItems": 1, "items": {"type": "string"}}}, "additionalProperties": false}},
+    "rejections": {"type": "array", "items": {"type": "object", "required": ["component", "reason_code", "reason"], "properties": {"component": {"type": "string"}, "reason_code": {"type": "string"}, "reason": {"type": "string"}}, "additionalProperties": false}},
+    "decision_trace": {"type": "object", "required": ["hard_constraints", "candidate_scores", "assumptions"], "properties": {"hard_constraints": {"type": "array", "items": {"type": "object"}}, "candidate_scores": {"type": "array", "items": {"type": "object"}}, "assumptions": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+    "risks": {"type": "array", "items": {"type": "object", "required": ["code", "severity", "description", "mitigation"], "properties": {"code": {"type": "string"}, "severity": {"type": "string", "enum": ["P0", "P1", "P2"]}, "description": {"type": "string"}, "mitigation": {"type": "string"}}, "additionalProperties": false}},
+    "validation_plan": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["topic", "environment", "metric", "pass_criteria", "stop_condition"], "properties": {"topic": {"type": "string"}, "environment": {"type": "string", "enum": ["staging", "read_only"]}, "metric": {"type": "string"}, "pass_criteria": {"type": "string"}, "stop_condition": {"type": "string"}}, "additionalProperties": false}},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["source", "claim"], "properties": {"source": {"type": "string"}, "claim": {"type": "string"}}, "additionalProperties": false}},
+    "pending_verifications": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}
