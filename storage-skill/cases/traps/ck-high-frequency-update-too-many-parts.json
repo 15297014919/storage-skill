@@ -1,0 +1,54 @@
+{
+  "id": "ck-high-frequency-update-too-many-parts",
+  "kind": "traps",
+  "source": "内部文档：ClickHouse oncall 手册 + ES/Doris/CK存储选型调研（已脱敏）",
+  "scenario_type": "选错了",
+  "request": "某业务团队希望用 ClickHouse 存储广告主的实时出价记录，数据特征：每秒约 5w 次竞价，每次竞价后可能更新同一个广告主的出价状态（UPDATE），查询需求是实时聚合当前小时各广告主的出价统计（GROUP BY advertiser_id）。工程师认为 CK 查询性能强、列存压缩率高，打算直接用 ClickHouse ReplacingMergeTree 表做高频 UPDATE + 实时聚合。这个方案有什么问题？",
+  "expected": {
+    "推荐方案": [
+      "将高频 UPDATE 改为追加写 + 聚合读：每次出价写一条新记录，查询时用 MAX/ARGMAX 取最新状态（或用 AggregatingMergeTree + 物化视图做预聚合）",
+      "或者将'实时出价状态'存入 Redis/KCache 做毫秒级点查和更新，仅将历史竞价明细异步同步到 CK 做分析"
+    ],
+    "推荐理由": [
+      "ClickHouse 是列式 OLAP 引擎，设计为追加写（Append-Only）+ 批量分析，不擅长高频单行 UPDATE",
+      "ReplacingMergeTree 的去重合并（Merge）是异步后台操作，查询时若 Parts 未合并完，会查到多条重复记录；高频 UPDATE 会堆积大量 Parts",
+      "高频 UPDATE/DELETE 触发 too-many-parts：每次 INSERT 产生一个 Part，Parts 过多（> 300/分区）会触发 too-many-parts 异常，导致写入被阻塞、表进入 readonly 状态",
+      "来源：CK Oncall 手册将 'too-many-parts' 和 'readonly' 列为最高频运维告警，根因正是高频小批量写入和频繁 Mutation"
+    ],
+    "次优方案": [
+      "若必须在 CK 中做状态管理，使用 AggregatingMergeTree + 物化视图，将更新语义转为聚合语义（业务逻辑须可接受最终一致性）"
+    ],
+    "明确淘汰方案": [
+      { "组件": "ReplacingMergeTree + 高频 UPDATE", "原因": "每次出价 5w/s 的 Mutation 会产生大量 Parts，触发 too-many-parts（CK Oncall 手册记录的经典故障根因），写入被阻塞，严重时表进入 readonly" },
+      { "组件": "ClickHouse 作为实时出价状态主存", "原因": "CK 查询延迟 P99 约 100-500ms，不满足出价决策的毫秒级响应要求；Redis/KCache 更适合实时状态存取（亚毫秒级）" }
+    ],
+    "已识别风险与反模式": [
+      "too-many-parts 反模式：高频小批量写入（不合并 batch）是 CK 的经典 P1 故障根因，每 1-2s 写一次而非每 100ms 写一次，须在 ETL 层做批量合并",
+      "表 readonly 风险：Parts 数量超阈值后 CK 表进入只读状态，写入全部失败，需 oncall 手动 OPTIMIZE TABLE",
+      "ZK 依赖风险：CK 集群的 DDL 和元数据依赖 ZooKeeper，ZK outstanding request 过高会导致集群整体不稳定（CK Oncall 手册监控项之一）",
+      "分区大小红线：单 CK 分区数据量不应超过 50GB，出价记录须按天分区并设合理保留策略",
+      "CK 不适合点查：若需要查单个广告主的实时出价状态（主键查询），CK 列扫描性能远低于 Redis/MySQL 等行存系统"
+    ],
+    "验证建议": [
+      {
+        "目标": "验证追加写 + 预聚合方案在 5w/s 出价记录场景下的稳定性",
+        "环境": "staging",
+        "指标": ["写入 P99 < 10ms（单批次 1000 条以上）", "Parts 数量 < 300/分区", "无 too-many-parts 告警", "小时级聚合查询 P99 < 200ms"],
+        "步骤": [
+          "模拟 5w/s 写入，ETL 层合并为每秒一次批量写入（每批 ~5w 条）",
+          "持续写入 1h，监控 Parts 数量和查询 P99"
+        ],
+        "通过标准": "Parts < 300/分区，写入 P99 < 10ms，聚合查询 P99 < 200ms",
+        "停止条件": "出现 too-many-parts 告警或表进入 readonly 立即停止，降低写入频率后再试"
+      }
+    ],
+    "引用来源": [
+      { "标题": "ClickHouse oncall 手册（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcAB9bcsFcw64u92N1K5D0uxP" },
+      { "标题": "ES、Doris、CK存储选型调研", "链接": "https://docs.corp.kuaishou.com/d/home/fcADCuLf--w6IWU1-jnlmPWIy" }
+    ],
+    "待验证项": [
+      "确认业务对聚合统计的时效性要求（实时/近实时/T+1），据此决定是否需要 Flink 实时预聚合写入 CK",
+      "确认 AggregatingMergeTree + 物化视图方案的聚合语义是否覆盖业务所需的全部指标"
+    ]
+  }
+}

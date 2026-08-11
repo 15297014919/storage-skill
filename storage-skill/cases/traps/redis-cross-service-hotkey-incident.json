@@ -1,0 +1,54 @@
+{
+  "id": "redis-cross-service-hotkey-incident",
+  "kind": "traps",
+  "source": "内部文档：redis大/热key告警case收集（已脱敏）",
+  "scenario_type": "选错了",
+  "request": "反垃圾系统（arc-antispam）需要记录用户直播间行为计数，某服务（log-profile-live-show-consumer）在处理直播间行为日志时，直接将 '用户ID_直播间ID' 作为 Redis Key 进行高频计数写入，热门直播间（如头部主播直播时）的单个 Key QPS 可能超过 20w/s。当前该计数 Key 存储在 antispamCounterCache 集群中，导致同集群的其他服务（rc-anticrawl-realtime）受到热点波及，出现延迟告警。应该如何选型和设计该计数存储方案？",
+  "expected": {
+    "推荐方案": [
+      "热 Key 打散：对热门直播间 Key 使用多副本策略（如 key_suffix_0 ~ key_suffix_N 随机写、聚合读）",
+      "或迁移至 KCache（多线程模型，天然抗热点，比 Redis 更适合热 Key 场景）",
+      "集群隔离：反垃圾计数集群与爬虫防控集群物理隔离，防止跨服务热点扩散"
+    ],
+    "推荐理由": [
+      "Redis 单线程处理命令，热 Key > 10w QPS 会导致单核瓶颈、RT 飙升（已知红线阈值）",
+      "KCache 多线程模型对热点 Key 有更强的抗压能力，且成本约 2.04¥/GB（vs Redis 4.28¥/GB）",
+      "跨服务共享集群的热点 Key 是已记录的 P1 级别根因：A 服务写热 Key → B 服务读受影响（本案例的实际故障场景）",
+      "集群隔离是反模式规避的基础手段"
+    ],
+    "次优方案": [
+      "若无法迁移 KCache，在 Redis 侧配置热 Key 探测（天问告警）+ LocalCache 兜底，热 Key 超阈值时本地缓存打散"
+    ],
+    "明确淘汰方案": [
+      { "组件": "直播间维度 Redis 直写（不打散）", "原因": "热门直播间单 Key QPS 可达 20w+，超出 Redis 10w/s 红线，导致 RT 飙升和跨服务影响" },
+      { "组件": "跨业务共享同一 Redis 集群", "原因": "已有实际故障：A 服务热 Key 影响 B 服务正常读写，这是已记录的 P1 根因模式" }
+    ],
+    "已识别风险与反模式": [
+      "热 Key 跨服务影响反模式：同一集群被多个服务共用，任一服务产生热 Key 均可影响其他服务（本案例根因）",
+      "Redis 热 Key > 10w QPS 红线：单核处理能力上限，超出后 RT 飙升、连接队列积压",
+      "直播间 Key 设计：直播间 ID 直接作为 Key，头部主播直播时天然产生热点，须在设计阶段引入打散",
+      "大 Key 潜在风险：若计数 Value 包含列表（如用户行为序列），单 Key 可能超 10KB"
+    ],
+    "验证建议": [
+      {
+        "目标": "验证 KCache 或打散方案在头部主播直播场景下的稳定性",
+        "环境": "staging",
+        "指标": ["单 Key QPS < 10w（打散后）或 KCache 无热点告警", "RT P99 < 5ms", "无跨服务延迟波动"],
+        "步骤": [
+          "模拟头部主播开播，构造 20w QPS 指向单一直播间 ID 的计数写入",
+          "验证打散后 N 个副本 Key 负载均匀，聚合读逻辑正确"
+        ],
+        "通过标准": "无单 Key 超 10w/s，RT P99 < 5ms，隔离集群无 RT 波动",
+        "停止条件": "任一 Key 超 20w QPS 或 RT P99 超 50ms 立即停止"
+      }
+    ],
+    "引用来源": [
+      { "标题": "redis大/热key告警case收集（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcADpxiwgfmwRhQ5Hi0TqbX8u" },
+      { "标题": "KV存储选型实践", "链接": "https://docs.corp.kuaishou.com/d/home/fcABZNsQQ9p0-zVZR14rmdtOT" }
+    ],
+    "待验证项": [
+      "确认 KCache 当前是否支持反垃圾业务所需的命令集（命令兼容性校验）",
+      "确认天问是否已针对该集群配置热 Key 探测告警"
+    ]
+  }
+}

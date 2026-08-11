@@ -1,0 +1,55 @@
+{
+  "id": "social-relation-mysql-to-kwaibase",
+  "kind": "typical",
+  "source": "内部文档：主站持久化存储演进方案调研（已脱敏）",
+  "scenario_type": "选对了",
+  "request": "主站关注/粉丝关系表（follow_detail/follow_fs），当前存 MySQL 分库分表（1000 分表），数据特征：纯 KV 点查（按 user_id 和 following_user_id 查询），无复杂 SQL/事务/JOIN，列数少（< 6 列），冷热分布明显（大 V 的关注粉丝是热点），写 TPS 相对数据量较小，但总量极大（配额达 PB 级）。当前痛点：分库分表人力维护成本高，缓存层（Redis/Memcached）需要额外开发维护一致性，成本高。是否有更好的存储方案？",
+  "expected": {
+    "推荐方案": [
+      "KwaiBase 替代 MySQL 分库分表 + 缓存层，用单层宽表存储关注/粉丝关系",
+      "迁移路径：双写双读验证 → 灰度切量 → 全量切换 → MySQL 降级归档"
+    ],
+    "推荐理由": [
+      "关注关系是纯 KV 模型（user_id → following_user_id 点查），KwaiBase 主键点查完全覆盖，无需分库分表",
+      "KwaiBase LSM-Tree 对追加写（关注/取关）性能优于 MySQL B+Tree；KinsDB 存储成本约为 MySQL 的一半",
+      "KwaiBase 支持水平弹性扩展，无需人工拆库；消除缓存层可降低维护成本，KwaiBase 内部处理热点读",
+      "来源：主站持久化存储演进调研提出'KV/列表类型，可从 db 迁移至 KwaiBase，降本 70%'",
+      "IM 场景已验证 KwaiBase 替代 MySQL+HBase，关系数据场景迁移路径可复用"
+    ],
+    "次优方案": [
+      "若迁移成本高，可先降副本数（当前超过 4 副本的需降至 ≤4），配合 KSQL 8.0 开启压缩，短期降本",
+      "KGraph 适用于图关联关系查询（二度关系、共同关注等），若有推荐场景可评估 KGraph 替代"
+    ],
+    "明确淘汰方案": [
+      { "组件": "继续 MySQL 分库分表", "原因": "分库分表维护成本高，扩容需人工介入；PB 级数据量 + 缓存层维护成本合计不优于 KwaiBase 单层架构" },
+      { "组件": "ES 作关系主存", "原因": "关注关系无全文检索需求，ES 的倒排索引对简单 KV 点查是浪费；ES 不支持强一致写" }
+    ],
+    "已识别风险与反模式": [
+      "迁移过程一致性风险：双写期间须确保 KwaiBase 写入失败不影响主链路（异步降级+重试）",
+      "热点写：大 V 账号的关注/粉丝写入是热点，KwaiBase RowKey 需设计 hash 前缀散列",
+      "无二级索引限制：KwaiBase 不支持原生二级索引，若业务有'按时间倒序列出关注列表'等需求，需在 RowKey 中编码时间（如 user_id + (MAX_TS - create_time)）",
+      "迁移窗口选择：关注/粉丝是核心社交数据，迁移须避开大促和春节活动期"
+    ],
+    "验证建议": [
+      {
+        "目标": "验证 KwaiBase 在关注/粉丝点查场景的性能和成本收益",
+        "环境": "staging",
+        "指标": ["点查 P99 < 10ms", "写入 P99 < 20ms", "大 V 账号热点均匀分布（无 Region 过载）", "存储成本估算下降 > 50% vs MySQL"],
+        "步骤": [
+          "用脱敏关注关系数据导入 staging KwaiBase，RowKey 设计为 hash(user_id) + user_id + following_user_id",
+          "并发压测点查和关注/取关写入，特别构造大 V 场景（单用户关注者 1000w+）"
+        ],
+        "通过标准": "P99 < 10ms，无 Region 热点告警",
+        "停止条件": "Region 持续热点或 P99 超 50ms 立即回滚"
+      }
+    ],
+    "引用来源": [
+      { "标题": "主站持久化存储演进方案调研（内部）", "链接": "https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG" },
+      { "标题": "2025快手四大存储选型标准", "链接": "https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI" }
+    ],
+    "待验证项": [
+      "确认 KwaiBase 对'按时间倒序查询用户的关注列表'是否有原生支持（TimeLine 模型完备度）",
+      "确认关注关系数据是否有跨 AZ 容灾要求，KwaiBase 当前支持的容灾级别"
+    ]
+  }
+}

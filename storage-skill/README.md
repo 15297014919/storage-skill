@@ -17,18 +17,18 @@ storage-skill/
 ├── SKILL.md                        # Skill 入口：触发条件、强制边界、工作流、资源导航
 ├── agents/
 │   └── openai.yaml                 # OpenAI 兼容 Agent 接口描述
-├── cases/                          # 评测集
-│   ├── typical/                    # 典型场景（5 个）
-│   │   ├── analytics-events.json   # 事件分析
-│   │   ├── fulltext-search.json    # 全文检索
-│   │   ├── hot-cache.json          # 热点缓存
-│   │   ├── transactional-order.json # 事务订单
-│   │   └── wide-table.json         # 宽表查询
-│   └── traps/                      # 陷阱场景（4 个）
-│       ├── es-strong-order.json    # 🚫 ES 做强一致订单
-│       ├── hbase-secondary-index.json # 🚫 HBase 做二级索引
-│       ├── mysql-log-firehose.json # 🚫 MySQL 抗日志洪峰
-│       └── redis-cold-data.json    # 🚫 Redis 存冷数据
+├── cases/                          # 评测集（全部来自公司内部真实文档）
+│   ├── typical/                    # 典型场景（6 个）
+│   │   ├── biz-olap-doris-to-clickhouse.json         # 商业化报表 Doris → CK 迁移
+│   │   ├── im-message-hbase-to-kwaibase.json         # IM 消息三层架构 → KwaiBase
+│   │   ├── label-system-kiwi-replace-redis-cold.json # 标签系统离线标签 Redis → Kiwi
+│   │   ├── mainsite-mysql-kv-to-kwaibase-cost.json   # 主站 KV 类数据 MySQL → KwaiBase
+│   │   ├── social-relation-mysql-to-kwaibase.json    # 关注/粉丝关系 MySQL → KwaiBase
+│   │   └── view-later-list-kgraph-replace-mysql-redis.json  # 稍后再看列表 → KGraph
+│   └── traps/                      # 陷阱场景（3 个）
+│       ├── ck-high-frequency-update-too-many-parts.json  # 🚫 CK 高频 UPDATE → too-many-parts
+│       ├── cleartle-mysql-single-table-bottleneck.json   # 🚫 清结算单表不治理预埋风险
+│       └── redis-cross-service-hotkey-incident.json      # 🚫 Redis 热Key跨服务扩散事故
 ├── eval/
 │   └── run_eval.sh                 # 静态评测入口
 ├── knowledge/                      # 存储产品能力档案（14 个 YAML）
@@ -140,10 +140,19 @@ storage-skill/
 
 ### 评测集构成
 
-| 类型 | 数量 | 场景 |
-|------|------|------|
-| 典型场景 | 5 | 事件分析、全文检索、热点缓存、事务订单、宽表查询 |
-| 陷阱场景 | 4 | Redis 冷数据、MySQL 日志洪峰、ES 强一致订单、HBase 二级索引 |
+所有 case 均从快手内部真实文档中提取（故障复盘、迁移项目报告、架构评审、运维手册），经脱敏后作为 few-shot 样本和评测集。
+
+| ID | 类型 | 来源文档 | 真实性 |
+|----|------|---------|--------|
+| `im-message-hbase-to-kwaibase` | 典型 | IM消息存储成本优化工作汇报 | ✅ 已落地迁移项目报告 |
+| `biz-olap-doris-to-clickhouse` | 典型 | 商业化效果数据迁移CK项目 | ✅ 真实Benchmark数据（CPU/P99对比） |
+| `mainsite-mysql-kv-to-kwaibase-cost` | 典型 | 主站持久化存储演进方案调研 | ✅ 含真实集群名和数据量 |
+| `social-relation-mysql-to-kwaibase` | 典型 | 主站持久化存储演进方案调研 | ✅ 含真实集群名和数据量 |
+| `view-later-list-kgraph-replace-mysql-redis` | 典型 | 业务场景和存储综合分析V2 | ✅ 含真实 QPS（308w/s）和 DB 容量 |
+| `label-system-kiwi-replace-redis-cold` | 典型 | KV存储选型实践 | ✅ 标签系统实际在用选型方案 |
+| `redis-cross-service-hotkey-incident` | 陷阱 | redis大/热key告警case收集 | ✅ 真实天问告警事故，有服务名 |
+| `cleartle-mysql-single-table-bottleneck` | 陷阱 | 清结算存储架构升级-分库分表评审 | ✅ 真实架构评审，含实际业务量数据 |
+| `ck-high-frequency-update-too-many-parts` | 陷阱 | ClickHouse oncall 手册 | ⚠️ 运维故障手册真实，"广告出价"为基于真实故障模式的合成场景 |
 
 每个 case 的 `expected` 字段包含推荐方案/次优方案/明确淘汰方案/风险与反模式/验证建议/引用来源/待验证项，与 `report-schema.md` 对齐。
 
@@ -218,9 +227,16 @@ Skill 会自动走完 6 步工作流，输出结构化选型报告。
 |------|------|------|
 | 25快手存储健康度治理&业务存储架构演进 | [Docs](https://docs.corp.kuaishou.com/d/home/fcADgnjSSO4AkIN4CGkfpsnKb) | 治理数据、阈值、迁移路线 |
 | 2025快手四大存储选型标准 | [Docs](https://docs.corp.kuaishou.com/d/home/fcABmaRT3JxBzWIWc9wDTj7TI) | 官方决策树、选型阈值 |
-| KV存储选型实践 | [Docs](https://docs.corp.kuaishou.com/d/home/fcABZNsQQ9p0-zVZR14rmdtOT) | Redis/KCache/Kiwi 对比 |
+| KV存储选型实践 | [Docs](https://docs.corp.kuaishou.com/d/home/fcABZNsQQ9p0-zVZR14rmdtOT) | Redis/KCache/Kiwi 对比（含成本数据和选型阈值） |
 | 存储健康度治理标准 | [Docs](https://docs.corp.kuaishou.com/d/home/fcAATr1i1vxEN0C816BZAf5-U) | 健康度红线 |
-| ES/Doris/CK存储选型调研 | [Docs](https://docs.corp.kuaishou.com/k/home/VbM-rn1abDg0/fcADCuLf--w6IWU1-jnlmPWIy) | OLAP 选型对比 |
+| ES/Doris/CK存储选型调研 | [Docs](https://docs.corp.kuaishou.com/d/home/fcADCuLf--w6IWU1-jnlmPWIy) | OLAP 选型对比 |
+| IM消息存储成本优化工作汇报 | [Docs](https://docs.corp.kuaishou.com/d/home/fcABVR8_D-x2Ff-zsOS2G6TiM) | **典型case来源**：KwaiBase落地迁移全过程 |
+| 商业化效果数据迁移clickhouse项目 | [Docs](https://docs.corp.kuaishou.com/d/home/fcABdI0bD5ieCJf9uKs97G7mr) | **典型case来源**：Doris→CK Benchmark对比 |
+| 主站持久化存储演进方案调研 | [Docs](https://docs.corp.kuaishou.com/d/home/fcAB1LjgjZoNX-vj4xvxyutOG) | **典型case来源**：1759集群迁移路线、Top30业务分析 |
+| 业务场景和存储的综合分析V2 | [Docs](https://docs.corp.kuaishou.com/d/home/fcADITcEPhSmzG2ER-5CaRDJM) | **典型case来源**：KGraph/KwaiKV替代MySQL+Redis场景 |
+| redis大/热key告警case收集 | [Docs](https://docs.corp.kuaishou.com/d/home/fcADpxiwgfmwRhQ5Hi0TqbX8u) | **陷阱case来源**：生产热Key跨服务扩散事故 |
+| 清结算存储架构升级-分库分表评审 | [Docs](https://docs.corp.kuaishou.com/d/home/fcABeOsVSxy2xCH4VRQstmGUj) | **陷阱case来源**：单表容量风险预防性改造评审 |
+| ClickHouse oncall 手册 | [Docs](https://docs.corp.kuaishou.com/d/home/fcAB9bcsFcw64u92N1K5D0uxP) | **陷阱case来源**：too-many-parts / readonly 故障手册 |
 
 ---
 
